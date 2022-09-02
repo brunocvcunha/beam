@@ -2340,6 +2340,68 @@ public class DataflowRunnerTest implements Serializable {
     assertTrue(DataflowRunner.isMultiLanguagePipeline(pipeline));
   }
 
+  @Test
+  public void testSubnetworkValidConfig() throws IOException {
+    final String testSubnetwork = String.format("regions/%s/subnetworks/SUBNETWORK", REGION_ID);
+
+    DataflowPipelineOptions options = buildPipelineOptions();
+    options.setSubnetwork(testSubnetwork);
+    options.setRegion(REGION_ID);
+    options.setWorkerRegion(REGION_ID);
+
+    DataflowRunner.fromOptions(options).run(Pipeline.create());
+
+    ArgumentCaptor<Job> jobCaptor = ArgumentCaptor.forClass(Job.class);
+    Mockito.verify(mockJobs).create(eq(PROJECT_ID), eq(REGION_ID), jobCaptor.capture());
+    assertValidJob(jobCaptor.getValue());
+  }
+
+  @Test
+  public void testSubnetworkValidLongConfig() throws IOException {
+    final String testSubnetwork = String.format("regions/%s/subnetworks/SUBNETWORK", REGION_ID);
+
+    DataflowPipelineOptions options = buildPipelineOptions();
+    options.setSubnetwork(testSubnetwork);
+    options.setRegion(REGION_ID);
+    options.setWorkerRegion(REGION_ID);
+
+    DataflowRunner.fromOptions(options).run(Pipeline.create());
+
+    ArgumentCaptor<Job> jobCaptor = ArgumentCaptor.forClass(Job.class);
+    Mockito.verify(mockJobs).create(eq(PROJECT_ID), eq(REGION_ID), jobCaptor.capture());
+    assertValidJob(jobCaptor.getValue());
+  }
+
+  @Test
+  public void testSubnetworkConfigMustMatchJobRegion() throws IOException {
+    final String testSubnetwork = String.format("regions/%s/subnetworks/SUBNETWORK", REGION_ID);
+    final String testRegion = "another-region-1";
+
+    DataflowPipelineOptions options = buildPipelineOptions();
+    options.setSubnetwork(testSubnetwork);
+    options.setRegion(testRegion);
+
+    thrown.expect(IllegalArgumentException.class);
+    thrown.expectMessage(
+        "subnetwork (regions/some-region-1/subnetworks/SUBNETWORK) must match job region (another-region-1).");
+    DataflowRunner.fromOptions(options);
+  }
+
+  @Test
+  public void testSubnetworkConfigMustMatchWorkerRegion() throws IOException {
+    final String testSubnetwork = String.format("regions/%s/subnetworks/SUBNETWORK", REGION_ID);
+    final String testRegion = "another-region-1";
+
+    DataflowPipelineOptions options = buildPipelineOptions();
+    options.setSubnetwork(testSubnetwork);
+    options.setWorkerRegion(testRegion);
+
+    thrown.expect(IllegalArgumentException.class);
+    thrown.expectMessage(
+        "subnetwork (regions/some-region-1/subnetworks/SUBNETWORK) must match worker region (another-region-1).");
+    DataflowRunner.fromOptions(options);
+  }
+
   private void testStreamingWriteOverride(PipelineOptions options, int expectedNumShards) {
     TestPipeline p = TestPipeline.fromOptions(options);
 

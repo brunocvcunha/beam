@@ -277,6 +277,8 @@ public class DataflowRunner extends PipelineRunner<DataflowPipelineJob> {
 
     validateWorkerSettings(
         PipelineOptionsValidator.validate(DataflowPipelineWorkerPoolOptions.class, options));
+    validateSubnetworkSettings(
+        PipelineOptionsValidator.validate(DataflowPipelineOptions.class, options));
 
     PathValidator validator = dataflowOptions.getPathValidator();
     String gcpTempLocation;
@@ -480,6 +482,58 @@ public class DataflowRunner extends PipelineRunner<DataflowPipelineJob> {
       LOG.warn("Option --zone is deprecated. Please use --workerZone instead.");
       gcpOptions.setWorkerZone(gcpOptions.getZone());
       gcpOptions.setZone(null);
+    }
+  }
+
+  /**
+   * Validate if the subnetwork settings are specified correctly, with a matching regions. Starting
+   * a job in a wrong network results in unresponsive workers being launched.
+   *
+   * <p>Please see <a
+   * href="https://cloud.google.com/dataflow/docs/guides/specifying-networks">Specify a network and
+   * subnetwork</a> for more details.
+   */
+  @VisibleForTesting
+  static void validateSubnetworkSettings(DataflowPipelineOptions dataflowOptions) {
+    if (!Strings.isNullOrEmpty(dataflowOptions.getSubnetwork())) {
+      String expectedNetworkFormat =
+          "https://www.googleapis.com/compute/v1/projects/%s/regions/%s/";
+      String expectedNetworkShortFormat = "regions/%s/";
+
+      if (!Strings.isNullOrEmpty(dataflowOptions.getRegion())) {
+        String networkFormat =
+            String.format(
+                expectedNetworkFormat, dataflowOptions.getProject(), dataflowOptions.getRegion());
+        String networkShortFormat =
+            String.format(expectedNetworkShortFormat, dataflowOptions.getRegion());
+
+        checkArgument(
+            dataflowOptions.getSubnetwork().startsWith(networkFormat)
+                || dataflowOptions.getSubnetwork().startsWith(networkShortFormat),
+            "Given subnetwork ("
+                + dataflowOptions.getSubnetwork()
+                + ") must match job region ("
+                + dataflowOptions.getRegion()
+                + ").");
+      }
+      if (!Strings.isNullOrEmpty(dataflowOptions.getWorkerRegion())) {
+        String networkFormat =
+            String.format(
+                expectedNetworkFormat,
+                dataflowOptions.getProject(),
+                dataflowOptions.getWorkerRegion());
+        String networkShortFormat =
+            String.format(expectedNetworkShortFormat, dataflowOptions.getWorkerRegion());
+
+        checkArgument(
+            dataflowOptions.getSubnetwork().startsWith(networkFormat)
+                || dataflowOptions.getSubnetwork().startsWith(networkShortFormat),
+            "Given subnetwork ("
+                + dataflowOptions.getSubnetwork()
+                + ") must match worker region ("
+                + dataflowOptions.getWorkerRegion()
+                + ").");
+      }
     }
   }
 

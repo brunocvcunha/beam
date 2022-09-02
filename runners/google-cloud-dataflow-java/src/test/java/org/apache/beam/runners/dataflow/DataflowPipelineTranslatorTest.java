@@ -282,6 +282,7 @@ public class DataflowPipelineTranslatorTest implements Serializable {
 
     DataflowPipelineOptions options = buildPipelineOptions();
     options.setSubnetwork(testSubnetwork);
+    options.setRegion("REGION");
 
     Pipeline p = buildPipeline(options);
     p.traverseTopologically(new RecordingPipelineVisitor());

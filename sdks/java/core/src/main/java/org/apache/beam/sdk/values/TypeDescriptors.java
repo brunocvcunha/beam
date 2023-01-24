@@ -27,6 +27,7 @@ import java.util.Set;
 import org.apache.beam.sdk.transforms.Contextful;
 import org.apache.beam.sdk.transforms.ProcessFunction;
 import org.apache.beam.sdk.transforms.SerializableFunction;
+import org.apache.beam.sdk.transforms.VoidFunction;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 /**
@@ -402,6 +403,17 @@ public class TypeDescriptors {
     return inputOf((ProcessFunction<InputT, OutputT>) fn);
   }
 
+  /**
+   * Returns a type descriptor for the input of the given {@link VoidFunction}, subject to Java
+   * type erasure: may contain unresolved type variables if the type was erased.
+   */
+  public static <InputT> TypeDescriptor<InputT> inputOf(
+      VoidFunction<InputT> fn) {
+    return extractFromTypeParameters(
+        fn,
+        VoidFunction.class,
+        new TypeVariableExtractor<VoidFunction<InputT>, InputT>() {});
+  }
   /**
    * Returns a type descriptor for the output of the given {@link ProcessFunction}, subject to Java
    * type erasure: may contain unresolved type variables if the type was erased.

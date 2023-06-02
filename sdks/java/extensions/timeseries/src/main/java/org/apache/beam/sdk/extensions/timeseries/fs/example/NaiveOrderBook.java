@@ -27,7 +27,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.TreeMap;
 import javax.annotation.Nullable;
-import org.apache.beam.sdk.annotations.Experimental;
 import org.apache.beam.sdk.extensions.timeseries.fs.MutableState;
 
 /**
@@ -38,7 +37,6 @@ import org.apache.beam.sdk.extensions.timeseries.fs.MutableState;
  *
  * <p>TODO remove java serializable as coder
  */
-@Experimental
 public class NaiveOrderBook extends OrderBook<Tick> implements Serializable {
   // TODO figure out how to avoid NullChecker errors for Order.id AutoValue Not Nullable property
   public TreeMap<Double, Map<String, Order>> bids = new TreeMap<>(Comparator.reverseOrder());

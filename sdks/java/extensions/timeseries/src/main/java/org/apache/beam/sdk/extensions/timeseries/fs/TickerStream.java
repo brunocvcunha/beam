@@ -25,7 +25,6 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Optional;
 import javax.annotation.Nullable;
-import org.apache.beam.sdk.annotations.Experimental;
 import org.apache.beam.sdk.coders.BooleanCoder;
 import org.apache.beam.sdk.coders.CannotProvideCoderException;
 import org.apache.beam.sdk.coders.Coder;
@@ -103,7 +102,6 @@ import org.slf4j.LoggerFactory;
  * GlobalSeqValue and the next key is the symbol.
  */
 @AutoValue
-@Experimental
 @SuppressWarnings({"nullness", "TypeNameShadowing"})
 public abstract class TickerStream<T, K extends MutableState<T>>
     extends PTransform<PCollection<KV<Long, KV<String, T>>>, PCollection<K>> {
@@ -504,7 +502,7 @@ public abstract class TickerStream<T, K extends MutableState<T>>
     }
   }
 
-  enum Mode {
+  public static enum Mode {
     SIMPLEX_STREAM,
     MULTIPLEX_STREAM
   }

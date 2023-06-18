@@ -20,9 +20,7 @@ package org.apache.beam.sdk.extensions.timeseries.fs.example;
 import java.io.Serializable;
 import java.util.Objects;
 import javax.annotation.Nullable;
-import org.apache.beam.sdk.annotations.Experimental;
 
-@Experimental
 public class Order implements Serializable {
 
   private String id;

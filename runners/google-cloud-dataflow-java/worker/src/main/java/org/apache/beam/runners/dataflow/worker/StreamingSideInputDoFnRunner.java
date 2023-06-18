@@ -85,7 +85,8 @@ public class StreamingSideInputDoFnRunner<InputT, OutputT, W extends BoundedWind
       Instant timestamp,
       Instant outputTimestamp,
       TimeDomain timeDomain) {
-    simpleDoFnRunner.onTimer(timerId, timerFamilyId, key, window, timestamp, outputTimestamp, timeDomain);
+    simpleDoFnRunner.onTimer(
+        timerId, timerFamilyId, key, window, timestamp, outputTimestamp, timeDomain);
   }
 
   @Override

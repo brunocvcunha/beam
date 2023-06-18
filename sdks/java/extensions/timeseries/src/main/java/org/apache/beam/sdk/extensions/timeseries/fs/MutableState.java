@@ -17,9 +17,6 @@
  */
 package org.apache.beam.sdk.extensions.timeseries.fs;
 
-import org.apache.beam.sdk.annotations.Experimental;
-
-@Experimental
 public abstract class MutableState<T> {
 
   public abstract void mutate(T mutation);

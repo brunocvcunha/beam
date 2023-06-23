@@ -308,16 +308,16 @@ public abstract class TickerStream<T, K extends MutableState<T>>
       // This should never be null, we can only be here if a value was set
       Map<Instant, Long> signals = releaseSignals.read();
 
-      LOG.trace(
+      LOG.info(
           "Lets get all values - key {} - {} - {} - {} ",
           key,
           signals.isEmpty(),
           timerContext.timestamp(),
           signals.get(timerContext.timestamp()));
 
-      long releaseSignal = signals.get(timerContext.timestamp());
-
       if (Boolean.FALSE.equals(buffer.isEmpty().read())) {
+        Long releaseSignal = signals.get(timerContext.timestamp());
+
         Iterable<TimestampedValue<T>> batch =
             buffer.readRange(Instant.EPOCH, Instant.ofEpochMilli(releaseSignal));
 

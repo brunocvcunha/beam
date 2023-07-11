@@ -24,9 +24,9 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.List;
 import java.util.NoSuchElementException;
 import org.apache.beam.sdk.coders.Coder;
+import org.apache.beam.sdk.fn.data.WeightedList;
 import org.apache.beam.sdk.util.ByteStringOutputStream;
 import org.apache.beam.vendor.grpc.v1p54p0.com.google.protobuf.ByteString;
 
@@ -186,14 +186,16 @@ public class DataStreams {
      * ByteString} in the underlying {@link ByteString} {@link Iterator iterator} and decoding
      * elements till at the next boundary.
      */
-    public List<T> decodeFromChunkBoundaryToChunkBoundary() {
+    public WeightedList<T> decodeFromChunkBoundaryToChunkBoundary() {
       inbound.currentStream = inputByteStrings.next().newInput();
       inbound.position = 0;
       try {
         InputStream previousStream = inbound.currentStream;
-        List<T> rvals = new ArrayList<>();
+        WeightedList<T> rvals = new WeightedList<>(new ArrayList<>(), 0L);
         while (previousStream == inbound.currentStream && inbound.currentStream.available() != 0) {
-          rvals.add(next());
+          inbound.resetCounter();
+          T next = next();
+          rvals.add(next, inbound.getCount());
         }
         return rvals;
       } catch (IOException e) {
@@ -261,6 +263,7 @@ public class DataStreams {
      */
     private class Inbound extends InputStream {
       private int position; // Position within the current input stream.
+      private long counter; // The amount of bytes read since the last reset()
       private InputStream currentStream;
 
       public Inbound() {
@@ -310,6 +313,7 @@ public class DataStreams {
           position = 0;
         }
         position += 1;
+        counter += 1;
         return read;
       }
 
@@ -325,6 +329,7 @@ public class DataStreams {
             if (!inputByteStrings.hasNext()) {
               int bytesRead = len - remainingLen;
               position += bytesRead;
+              counter += bytesRead;
               return bytesRead > 0 ? bytesRead : -1;
             }
             currentStream = inputByteStrings.next().newInput();
@@ -333,7 +338,16 @@ public class DataStreams {
           remainingLen -= read;
         }
         position += len;
+        counter += len;
         return len;
+      }
+
+      public void resetCounter() {
+        this.counter = 0;
+      }
+
+      public long getCount() {
+        return counter;
       }
     }
   }

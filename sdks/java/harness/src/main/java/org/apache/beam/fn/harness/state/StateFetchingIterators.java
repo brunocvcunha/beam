@@ -54,15 +54,14 @@ import org.slf4j.LoggerFactory;
  * State API into an {@link Iterator} of {@link ByteString}s.
  */
 @SuppressWarnings({
-    "nullness" // TODO(https://github.com/apache/beam/issues/20497)
+  "nullness" // TODO(https://github.com/apache/beam/issues/20497)
 })
 public class StateFetchingIterators {
 
   private static final Logger LOG = LoggerFactory.getLogger(StateFetchingIterators.class);
 
   // do not instantiate
-  private StateFetchingIterators() {
-  }
+  private StateFetchingIterators() {}
 
   /**
    * This adapter handles using the continuation token to provide iteration over all the elements
@@ -79,9 +78,9 @@ public class StateFetchingIterators {
    * @param cache A cache instance used to store pages of elements and any pending requests. The
    *     cache should be namespaced for this object to prevent collisions.
    * @param beamFnStateClient A client for handling state requests.
-   * @param stateRequestForFirstChunk A fully populated state request for the first (and
-   *     possibly only) chunk of a state stream. This state request will be populated with a
-   *     continuation token to request further chunks of the stream if required.
+   * @param stateRequestForFirstChunk A fully populated state request for the first (and possibly
+   *     only) chunk of a state stream. This state request will be populated with a continuation
+   *     token to request further chunks of the stream if required.
    * @param valueCoder A coder for decoding the state stream.
    */
   public static <T> CachingStateIterable<T> readAllAndDecodeStartingFrom(
@@ -99,8 +98,7 @@ public class StateFetchingIterators {
   @VisibleForTesting
   static class IterableCacheKey implements Weighted {
 
-    private IterableCacheKey() {
-    }
+    private IterableCacheKey() {}
 
     static final IterableCacheKey INSTANCE = new IterableCacheKey();
 
@@ -111,18 +109,12 @@ public class StateFetchingIterators {
       // many different state subcaches.
       return 0;
     }
-  }
+  };
 
-  ;
-
-  /**
-   * A mutable iterable that supports prefetch and is backed by a cache.
-   */
+  /** A mutable iterable that supports prefetch and is backed by a cache. */
   static class CachingStateIterable<T> extends PrefetchableIterables.Default<T> {
 
-    /**
-     * Represents a set of elements.
-     */
+    /** Represents a set of elements. */
     abstract static class Blocks<T> implements Weighted {
 
       public abstract List<Block<T>> getBlocks();
@@ -239,8 +231,8 @@ public class StateFetchingIterators {
     }
 
     /**
-     * Removes the set of values from the cached iterable. The set is expected to contain the
-     * {@link Coder#structuralValue} representation and not the original.
+     * Removes the set of values from the cached iterable. The set is expected to contain the {@link
+     * Coder#structuralValue} representation and not the original.
      *
      * <p>Mutations over the Beam Fn State API must have been performed before any future lookups.
      *
@@ -307,8 +299,8 @@ public class StateFetchingIterators {
     }
 
     /**
-     * Clears the cached iterable and appends the set of values wrapped as a
-     * {@link WeightedList<T>}, taking ownership of the list.
+     * Clears the cached iterable and appends the set of values wrapped as a {@link
+     * WeightedList<T>}, taking ownership of the list.
      *
      * <p>Mutations over the Beam Fn State API must have been performed before any future lookups.
      *
@@ -511,7 +503,10 @@ public class StateFetchingIterators {
 
         LOG.warn(
             "List returned {} elements. Weight reported: {}, Caches.weigh() would be: {}. Continuation token: {}",
-            values.size(), values.getWeight(), Caches.weigh(values.getBacking()), nextToken);
+            values.size(),
+            values.getWeight(),
+            Caches.weigh(values.getBacking()),
+            nextToken);
 
         return Block.fromValues(values, nextToken);
       }
@@ -529,8 +524,8 @@ public class StateFetchingIterators {
   /**
    * An {@link Iterator} which fetches {@link ByteString} chunks using the State API.
    *
-   * <p>This iterator will only request a chunk on first access. Subsequently it eagerly
-   * pre-fetches one future chunk at a time.
+   * <p>This iterator will only request a chunk on first access. Subsequently it eagerly pre-fetches
+   * one future chunk at a time.
    */
   @VisibleForTesting
   static class LazyBlockingStateFetchingIterator implements PrefetchableIterator<ByteString> {
@@ -548,8 +543,8 @@ public class StateFetchingIterators {
     }
 
     /**
-     * Returns the continuation token used to load the value returned by the previous call to
-     * {@link #next}. Returns {@code null} if there are no more values.
+     * Returns the continuation token used to load the value returned by the previous call to {@link
+     * #next}. Returns {@code null} if there are no more values.
      */
     public @Nullable ByteString getContinuationToken() {
       return continuationToken;

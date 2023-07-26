@@ -175,6 +175,7 @@ abstract class ReadFromKafkaDoFn<K, V>
     this.createWatermarkEstimatorFn = transform.getCreateWatermarkEstimatorFn();
     this.timestampPolicyFactory = transform.getTimestampPolicyFactory();
     this.checkStopReadingFn = transform.getCheckStopReadingFn();
+    this.offsetEstimatorCache = new HashMap<>();
   }
 
   private static final Logger LOG = LoggerFactory.getLogger(ReadFromKafkaDoFn.class);
@@ -182,6 +183,8 @@ abstract class ReadFromKafkaDoFn<K, V>
   private final @Nullable Map<String, Object> offsetConsumerConfig;
 
   private final @Nullable SerializableFunction<TopicPartition, Boolean> checkStopReadingFn;
+
+  private final Map<TopicPartition, KafkaLatestOffsetEstimator> offsetEstimatorCache;
 
   private final SerializableFunction<Map<String, Object>, Consumer<byte[], byte[]>>
       consumerFactoryFn;
@@ -212,6 +215,7 @@ abstract class ReadFromKafkaDoFn<K, V>
     private final Consumer<byte[], byte[]> offsetConsumer;
     private final TopicPartition topicPartition;
     private final Supplier<Long> memoizedBacklog;
+    private boolean closed;
 
     KafkaLatestOffsetEstimator(
         Consumer<byte[], byte[]> offsetConsumer, TopicPartition topicPartition) {
@@ -221,8 +225,10 @@ abstract class ReadFromKafkaDoFn<K, V>
       memoizedBacklog =
           Suppliers.memoizeWithExpiration(
               () -> {
-                ConsumerSpEL.evaluateSeek2End(offsetConsumer, topicPartition);
-                return offsetConsumer.position(topicPartition);
+                synchronized (offsetConsumer) {
+                  ConsumerSpEL.evaluateSeek2End(offsetConsumer, topicPartition);
+                  return offsetConsumer.position(topicPartition);
+                }
               },
               1,
               TimeUnit.SECONDS);
@@ -232,6 +238,8 @@ abstract class ReadFromKafkaDoFn<K, V>
     protected void finalize() {
       try {
         Closeables.close(offsetConsumer, true);
+        closed = true;
+        LOG.info("Offset Estimator consumer was closed for {}", topicPartition);
       } catch (Exception anyException) {
         LOG.warn("Failed to close offset consumer for {}", topicPartition);
       }
@@ -241,12 +249,19 @@ abstract class ReadFromKafkaDoFn<K, V>
     public long estimate() {
       return memoizedBacklog.get();
     }
+
+    public boolean isClosed() {
+      return closed;
+    }
   }
 
   @GetInitialRestriction
   public OffsetRange initialRestriction(@Element KafkaSourceDescriptor kafkaSourceDescriptor) {
     Map<String, Object> updatedConsumerConfig =
         overrideBootstrapServersConfig(consumerConfig, kafkaSourceDescriptor);
+    LOG.info(
+        "Creating Kafka consumer for initial restriction for {}",
+        kafkaSourceDescriptor.getTopicPartition());
     try (Consumer<byte[], byte[]> offsetConsumer = consumerFactoryFn.apply(updatedConsumerConfig)) {
       ConsumerSpEL.evaluateAssign(
           offsetConsumer, ImmutableList.of(kafkaSourceDescriptor.getTopicPartition()));
@@ -310,17 +325,24 @@ abstract class ReadFromKafkaDoFn<K, V>
     if (restriction.getTo() < Long.MAX_VALUE) {
       return new OffsetRangeTracker(restriction);
     }
-    Map<String, Object> updatedConsumerConfig =
-        overrideBootstrapServersConfig(consumerConfig, kafkaSourceDescriptor);
-    KafkaLatestOffsetEstimator offsetPoller =
-        new KafkaLatestOffsetEstimator(
-            consumerFactoryFn.apply(
-                KafkaIOUtils.getOffsetConsumerConfig(
-                    "tracker-" + kafkaSourceDescriptor.getTopicPartition(),
-                    offsetConsumerConfig,
-                    updatedConsumerConfig)),
-            kafkaSourceDescriptor.getTopicPartition());
-    return new GrowableOffsetRangeTracker(restriction.getFrom(), offsetPoller);
+
+    TopicPartition topicPartition = kafkaSourceDescriptor.getTopicPartition();
+    KafkaLatestOffsetEstimator offsetEstimator = offsetEstimatorCache.get(topicPartition);
+    if (offsetEstimator == null || offsetEstimator.isClosed()) {
+      Map<String, Object> updatedConsumerConfig =
+          overrideBootstrapServersConfig(consumerConfig, kafkaSourceDescriptor);
+
+      LOG.info("Creating Kafka consumer for offset estimation for {}", topicPartition);
+
+      Consumer<byte[], byte[]> offsetConsumer =
+          consumerFactoryFn.apply(
+              KafkaIOUtils.getOffsetConsumerConfig(
+                  "tracker-" + topicPartition, offsetConsumerConfig, updatedConsumerConfig));
+      offsetEstimator = new KafkaLatestOffsetEstimator(offsetConsumer, topicPartition);
+      offsetEstimatorCache.put(topicPartition, offsetEstimator);
+    }
+
+    return new GrowableOffsetRangeTracker(restriction.getFrom(), offsetEstimator);
   }
 
   @ProcessElement
@@ -354,6 +376,10 @@ abstract class ReadFromKafkaDoFn<K, V>
               kafkaSourceDescriptor.getTopicPartition(),
               Optional.ofNullable(watermarkEstimator.currentWatermark()));
     }
+
+    LOG.info(
+        "Creating Kafka consumer for process continuation for {}",
+        kafkaSourceDescriptor.getTopicPartition());
     try (Consumer<byte[], byte[]> consumer = consumerFactoryFn.apply(updatedConsumerConfig)) {
       // Check whether current TopicPartition is still available to read.
       Set<TopicPartition> existingTopicPartitions = new HashSet<>();

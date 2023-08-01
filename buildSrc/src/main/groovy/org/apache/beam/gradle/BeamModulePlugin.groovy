@@ -638,7 +638,7 @@ class BeamModulePlugin implements Plugin<Project> {
         commons_codec                               : "commons-codec:commons-codec:1.15",
         commons_collections                         : "commons-collections:commons-collections:3.2.2",
         commons_compress                            : "org.apache.commons:commons-compress:1.21",
-        commons_csv                                 : "org.apache.commons:commons-csv:1.8",
+        commons_csv                                 : "org.apache.commons:commons-csv:1.10",
         commons_io                                  : "commons-io:commons-io:2.7",
         commons_lang3                               : "org.apache.commons:commons-lang3:3.9",
         commons_logging                             : "commons-logging:commons-logging:1.2",
